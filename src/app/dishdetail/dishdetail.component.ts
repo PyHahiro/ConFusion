@@ -1,9 +1,11 @@
 import {Input, ViewChild, OnInit, Inject, Component} from '@angular/core';
+import { visibility, flyInOut, expand } from '../animations/app.animation';
 import { Dish } from '../shared/dish';
 
 import { Params, ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
 import { DishService } from '../services/dish.service';
+
 
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Comment } from '../shared/comment';
@@ -13,14 +15,23 @@ import { switchMap } from 'rxjs/operators';
 @Component({
   selector: 'app-dishdetail',
   templateUrl: './dishdetail.component.html',
-  styleUrls: ['./dishdetail.component.scss']
+  styleUrls: ['./dishdetail.component.scss'],
+  animations: [
+    visibility(),
+    flyInOut(),
+    expand()
+  ]
 })
 
 
 
 export class DishdetailComponent implements OnInit {
 
+  dishcopy: Dish;
+
   dishErrMess: string;
+
+  visibility = 'shown';
 
   formErrors = {
     'author': '',
@@ -66,9 +77,9 @@ export class DishdetailComponent implements OnInit {
     this.dishService.getDishIds()
       .subscribe((dishIds) => {this.dishIds = dishIds,
         errmess => this.dishErrMess = <any> errmess });
-    this.route.params
-      .pipe(switchMap((params: Params) => this.dishService.getDish(params['id'])))
-      .subscribe(dish => { this.dish = dish; this.setPrevNext(dish.id);console.log(this.dish); });
+    this.route.params.pipe(switchMap((params: Params) => { this.visibility = 'hidden'; return this.dishService.getDish(+params['id']); }))
+        .subscribe(dish => { this.dish = dish; this.dishcopy = dish; this.setPrevNext(dish.id); this.visibility = 'shown'; },
+          errmess => this.dishErrMess = <any>errmess);
   }
   
   setPrevNext(dishId: string) {
@@ -107,7 +118,12 @@ export class DishdetailComponent implements OnInit {
 
     console.log(this.comment);
    
-    this.dish.comments.push(this.comment)
+    this.dishcopy.comments.push(this.comment);
+    this.dishService.putDish(this.dishcopy)
+      .subscribe(dish => {
+        this.dish = dish; this.dishcopy = dish;
+      },
+      errmess => { this.dish = null; this.dishcopy = null; this.dishErrMess = <any>errmess; });
 
     this.commentForm.reset({
       author:'',
