@@ -1,7 +1,9 @@
 import {Input, ViewChild, OnInit, Inject, Component} from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Feedback, ContactType } from '../shared/feedback';
-import { flyInOut } from '../animations/app.animation';
+import { flyInOut, expand } from '../animations/app.animation';
+
+import { delay, timeout } from 'rxjs/operators';
 
 import { switchMap } from 'rxjs/operators';
 
@@ -18,7 +20,8 @@ import { FeedbackService } from '../services/feedback.service';
     'style': 'display: block;'
     },
     animations: [
-      flyInOut()
+      flyInOut(),
+      expand()
     ]
 })
 
@@ -54,6 +57,9 @@ export class ContactComponent implements OnInit {
     },
   };
 
+  errMess: string;
+  charging = false;
+  visibility = true;
   feedbackForm: FormGroup;
   feedbackcopy: Feedback;
   feedback: Feedback;
@@ -68,7 +74,6 @@ export class ContactComponent implements OnInit {
 
   ngOnInit() {
     this.createForm();
-    this.feedbackcopy = this.feedback;
   }
 
   createForm() {
@@ -90,13 +95,27 @@ export class ContactComponent implements OnInit {
   }
 
   onSubmit() {
+    this.visibility = false;
     this.feedback = this.feedbackForm.value;
-
+    this.charging = true;
     this.feedbackService.submitFeedback(this.feedback)
     .subscribe(feedback => {
-      this.feedback = feedback; this.feedbackcopy = feedback;
+      this.feedback = feedback;
+      this.feedbackcopy = feedback;
+      this.charging = false;
+      var that = this;
+      setTimeout(function(){
+        that.resetfbForm();
+     }, 5000);
     },
-    errmess => { this.feedback = null; this.feedbackcopy = null; });
+    errmess => { this.feedback = null; this.feedbackcopy = null; this.errMess = <any>errmess; });
+
+    
+  }
+
+  resetfbForm()
+  {
+    this.visibility = true;
 
     this.feedbackForm.reset({
       firstname: '',
@@ -107,9 +126,8 @@ export class ContactComponent implements OnInit {
       contacttype: 'None',
       message: ''
     });
-    this.feedbackFormDirective.resetForm();
   }
-
+  
   onValueChanged(data?: any) {
     if (!this.feedbackForm) { return; }
     const form = this.feedbackForm;
